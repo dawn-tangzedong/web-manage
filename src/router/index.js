@@ -1,14 +1,14 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 
-Vue.use(Router)
+Vue.use(Router);
 
 export default new Router({
   routes: [
     {
       path: '/',
       name: 'home',
-      component: resolve => require(['../components/common/Home.vue'], resolve),
+      component: () => import('../components/common/Home.vue'),
       meta: {title: "博客发布"},
       children: [
         {

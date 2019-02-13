@@ -16,6 +16,12 @@
 
   export default {
     name: "home",
+    data() {
+      return {
+        tipsTitle: '错误提示的文案',
+        tipsType:'error'
+      }
+    },
     components: {
       "view-header": header,
       "view-sidebar": sidebar,
