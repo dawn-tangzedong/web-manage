@@ -1,6 +1,7 @@
 <!-- 菜单树 -->
 <template>
   <div class="menus-tree">
+    <!-- 菜单树形表格 -->
     <el-table ref="menusTable" :row-style="showRow" :data="menusTable" v-bind="$attrs">
       <el-table-column
         prop="title"
@@ -30,7 +31,7 @@
         <template slot-scope="scope">
           <!-- 三级菜单不能增加子菜单 -->
           <el-button v-if="scope.row.level!=='3' && !scope.row.path" type="text" size="small"
-                     @click="dialogFormVisible = true">增加
+                     @click="showDialogForm(scope.row,'新增菜单')">增加
           </el-button>
           <!-- 判断下面是否有子菜单，有子菜单不能是有删除按钮 -->
           <el-button v-if="!scope.row.children" type="text" size="small">删除</el-button>
@@ -38,26 +39,36 @@
         </template>
       </el-table-column>
     </el-table>
-
-    <el-dialog title="dialogTitle" :visible.sync="dialogFormVisible">
+    <!--  弹窗表单，用于添加或者修改菜单信息  -->
+    <el-dialog :title="dialogTitle" :visible.sync="dialogFormVisible">
+      <el-form v-if="menuParentDTO.title" :model="menuParentDTO" disabled="disabled">
+        <el-form-item label="上级" :label-width="formLabelWidth">
+          <el-input v-model="menuParentDTO.title" autocomplete="off"></el-input>
+        </el-form-item>
+      </el-form>
       <el-form :model="menuParentDTO">
         <el-form-item label="标题" :label-width="formLabelWidth">
           <el-input v-model="menuDTO.title" autocomplete="off"></el-input>
         </el-form-item>
       </el-form>
-      <el-form :model="menuParentDTO">
-        <el-form-item label="图标" :label-width="formLabelWidth">
-          <el-input v-model="menuDTO.title" autocomplete="off"></el-input>
+      <el-form :model="menuDTO" disabled="disabled">
+        <el-form-item label="等级" :label-width="formLabelWidth">
+          <el-input v-model="menuDTO.level" autocomplete="off"></el-input>
         </el-form-item>
       </el-form>
-      <el-form :model="menuParentDTO">
+      <el-form v-if="menuDTO.level === 1" :model="menuDTO">
+        <el-form-item label="图标" :label-width="formLabelWidth">
+          <el-input v-model="menuDTO.icon" autocomplete="off"></el-input>
+        </el-form-item>
+      </el-form>
+      <el-form :model="menuDTO">
         <el-form-item label="路径" :label-width="formLabelWidth">
-          <el-input v-model="menuDTO.title" autocomplete="off"></el-input>
+          <el-input v-model="menuDTO.path" autocomplete="off"></el-input>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dia log-footer">
         <el-button @click="dialogFormVisible = false">取 消</el-button>
-        <el-button type="primary" @click="dialogFormVisible = false">确 定</el-button>
+        <el-button type="primary" @click="addMenu">确 定</el-button>
       </div>
     </el-dialog>
   </div>
@@ -65,77 +76,29 @@
 <!-- Form -->
 <script>
   import Vue from 'vue';
+  import tips from '../../common/utils/TipsUtils';
   import http from '../../common/utils/HttpUtils';
 
   let vue = new Vue();
   export default {
     data() {
       return {
-        dialogTitle: '新增菜单',
+        dialogTitle: '',
         formLabelWidth: '120px',
         // 菜单dialog表单显示控制器
         dialogFormVisible: false,
-        // 菜单dialog表单父类数据
+        // 场景：添加菜单，菜单dialog表单父类数据，菜单父类信息渲染
         menuParentDTO: {
-          level: '',
+          title: undefined,
         },
         // 菜单dialog表单数据传输对象
         menuDTO: {
-          id: '', // 主键PK
           level: '', // 菜单等级
           parentId: '', // 父id
           path: '', //路由跳转路径
           icon: '', // 菜单图标
           title: '', //菜单标题
         },
-        // 菜单树结构数据
-        menusTree: [{
-          id: '1', // 主键PK
-          level: '1', // 菜单等级
-          parentId: '', // 父id
-          icon: 'fa fa-book fa-2', // 菜单图标
-          title: '博客管理', //菜单标题
-          children: [{
-            id: '4',
-            level: '2',
-            parentId: '1',
-            title: '博客发布',
-            path: 'blog/edit',
-          }, {
-            id: '5',
-            title: '博客列表',
-            index: '1-2',
-            level: '2',
-            children: [{
-              id: '9',
-              level: '3',
-              parentId: '5',
-              title: '三次菜单',
-              path: 'blog/edit',
-            }]
-          }, {
-            id: '6',
-            level: '2',
-            title: '博客编辑',
-            index: '1-3',
-          }]
-        }, {
-          id: '2',
-          level: '1',
-          icon: 'fa fa-address-book fa-2',
-          title: '用户信息',
-        }, {
-          id: '3',
-          level: '1',
-          icon: 'fa fa-list-ul fa-2',
-          title: "系统管理",
-          children: [{
-            id: '7',
-            level: '2',
-            title: '菜单管理',
-            path: 'system/menu'
-          }]
-        }],
         defaultProps: {
           children: 'children',
           label: 'title'
@@ -146,17 +109,36 @@
     },
     // 初始化函数，赋值，menusTree =>menusTable
     created() {
-      // this.menusTable = this.menusTree;
-      // 从后端Java项目中获取数据
-      console.log("从后端Java项目中获取数据");
-      http.$axios('sys/menu/list','post').then(response => {
-        console.log("<================response=================>");
-        console.log(response);
-      }, reject => {
-        console.log(reject)
-      })
+      // 洗牌树形表格
+      http.post('sys/menu/list').then(response => {
+          this.menusTable = response.data;
+        }
+        // , reject => {
+        //   console.log(reject)
+        // }
+      )
     },
     methods: {
+      // 展示添加、修改菜单的弹窗界面
+      showDialogForm: function (parent, dialogTitle) {
+        if (parent) {
+          this.menuParentDTO.title = parent.title; // 判断是否显示上级菜单的标题
+        }
+        this.menuDTO.level = parent.level + 1; // 等级赋值
+        this.menuDTO.parentId = parent.id; // 菜单绑定
+        this.dialogTitle = dialogTitle; // 弹窗标题
+        this.dialogFormVisible = true; // 打开弹窗
+      },
+      // 添加菜单操作
+      addMenu: function () {
+        this.dialogFormVisible = false;
+        http.post('sys/menu/save', this.menuDTO).then(response => {
+          tips.success("请求成功");
+          http.post('sys/menu/list').then(response => {
+            this.menusTable = response.data;
+          })
+        })
+      },
       showRow: function (row) {
         const show = row.row.parent ? row.row.parent._expanded && row.row.parent._show : true;
         row.row._show = show;
@@ -174,7 +156,6 @@
             continue;
           }
           if (item.open) { // open => close
-            console.log(item.children);
             let menusTable = this.menusTable;
             item.children.forEach(function (child, index) {
               menusTable.splice(j + index + 1, 0, child); // 添加子节点

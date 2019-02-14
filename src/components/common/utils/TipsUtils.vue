@@ -1,24 +1,24 @@
 <script>
+  import Vue from 'vue';
+  let vue = new Vue();
   function error(message) {
-    this.$message.error(message);
+    info(message,"error")
   }
 
   function success(message) {
-    this.$message({
-      message: message,
-      type: 'success'
-    });
+    info(message,"success")
   }
 
   function warning(message) {
-    this.$message({
-      message: message,
-      type: 'warning'
-    });
+    info(message,"warning")
   }
 
-  function info(message) {
-    this.$message(message);
+  function info(message, type) {
+    vue.$message({
+      showClose: true,
+      message: message,
+      type: type
+    });
   }
 
   export default {

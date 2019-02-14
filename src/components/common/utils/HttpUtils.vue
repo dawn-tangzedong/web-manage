@@ -1,10 +1,17 @@
 <script>
   import axios from 'axios';
-  import qs from 'qs' // 序列化请求数据，视服务端的要求
   import tips from "./TipsUtils";
   import config from '../Config'
 
-  function $axios(url, method, params) {
+  function get(url, params) {
+    return $axios(url, params, "GET")
+  }
+
+  function post(url, params) {
+    return $axios(url, params, "POST")
+  }
+
+  function $axios(url, params, method) {
     return new Promise((resolve, reject) => {
       const instance = axios.create({
           baseURL: config.info.host,
@@ -33,7 +40,7 @@
           if (config.method.toLocaleLowerCase() === 'post'
             || config.method.toLocaleLowerCase() === 'put'
             || config.method.toLocaleLowerCase() === 'delete') {
-            config.data = qs.stringify(config.data)
+            // config.data = qs.stringify(config.data)
           }
           return config
         },
@@ -45,8 +52,6 @@
             // return service.request(originalRequest);//例如再重复请求一次
             tips.error("请求超时")
           }
-          console.log("<====================error====================>");
-          console.log(error);
           return Promise.reject(error) // 在调用的那边可以拿到(catch)你想返回的错误信息
         }
       );
@@ -121,9 +126,12 @@
       );
       //请求处理
       instance(url, method, params).then((res) => {
-        console.log("<=================res================>");
-        console.log(res);
-        resolve(res);
+        if (!res.success) {
+          tips.error(`ERROR: ${res.message}`);
+          reject(error);
+        } else {
+          resolve(res);
+        }
       }).catch((error) => {
         reject(error);
       })
@@ -131,7 +139,7 @@
   }
 
   export default {
-    $axios
+    get, post
   }
 </script>
 
