@@ -17,7 +17,7 @@
           baseURL: config.info.host,
           url: url,
           method: method,
-          data: params,
+          params: params,
           // 请求头信息
           headers: {
             'Content-Type': 'application/json;charset=UTF-8'
@@ -125,7 +125,7 @@
         }
       );
       //请求处理
-      instance(url, method, params).then((res) => {
+      instance(url, params, method).then((res) => {
         if (!res.success) {
           tips.error(`ERROR: ${res.message}`);
           reject(error);
