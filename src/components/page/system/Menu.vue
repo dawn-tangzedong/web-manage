@@ -8,9 +8,9 @@
         label="菜单名称">
         <template slot-scope="scope">
           <span :class="['level'+scope.row.level]">
-          <i v-if="scope.row.children" @click="openToggle(scope.row)"
+          <i v-show="!scope.row.showChildBtn" @click="openToggle(scope.row)"
              :class="[scope.row.open?'fa fa-chevron-down':'fa fa-chevron-right']"></i>
-            </span>
+          </span>
           {{scope.row.title}}
         </template>
       </el-table-column>
@@ -75,11 +75,9 @@
 </template>
 <!-- Form -->
 <script>
-  import Vue from 'vue';
   import tips from '../../common/utils/TipsUtils';
   import http from '../../common/utils/HttpUtils';
 
-  let vue = new Vue();
   export default {
     data() {
       return {
@@ -110,7 +108,7 @@
     // 初始化函数，赋值，menusTree =>menusTable
     created() {
       // 洗牌树形表格
-      http.post('sys/menu/list').then(response => {
+      http.get('sys/menu/list').then(response => {
           this.menusTable = response.data;
         }
         // , reject => {
@@ -134,7 +132,7 @@
         this.dialogFormVisible = false;
         http.post('sys/menu/save', this.menuDTO).then(response => {
           tips.success("请求成功");
-          http.post('sys/menu/list').then(response => {
+          http.get('sys/menu/list').then(response => {
             this.menusTable = response.data;
           })
         })
@@ -146,23 +144,43 @@
       },
       // 树节点开关操作
       openToggle: function (item) {
-        // 这里只是展开和关闭样式的变换方法
-        vue.set(item, 'open', !item.open);
+        if (item.open === undefined) {
+          item.open = false;
+        }
+        // 这里只是展开和关闭样式的变换
+        item.open = !item.open;
         // 展开的时候，显示子节点，关闭的时候隐藏子节点
-        // 遍历所有的子节点，加入到menuTable中
-        for (let j = 0; j < this.menusTable.length; j++) {
-          // 找到父节点的id，然后依次把子节点放到数组里面父节点后面
-          if (this.menusTable[j].id !== item.id) {
-            continue;
-          }
-          if (item.open) { // open => close
-            let menusTable = this.menusTable;
-            item.children.forEach(function (child, index) {
-              menusTable.splice(j + index + 1, 0, child); // 添加子节点
-            })
-          } else {
-            this.menusTable.splice(j + 1, item.children.length); // 删除子节点
-          }
+        if (item.open) {
+          let menusTable = this.menusTable;
+          http.get('sys/menu/list', {'parentId': item.id}).then(response => {
+              console.log(response.data.length);
+              if (response.data.length > 0) {
+                for (let j = 0; j < menusTable.length; j++) {
+                  // 找到父节点的id，然后依次把子节点放到数组里面父节点后面
+                  if (this.menusTable[j].id !== item.id) {
+                    continue;
+                  }
+                  // 把请求到的数据拼接到该行数据后面
+                  response.data.forEach(function (child, index) {
+                    menusTable.splice(j + index + 1, 0, child); // 添加子节点
+                  });
+                  break;
+                }
+              } else {
+                // 如果没有子菜单，就隐藏图标
+                item.showChildBtn = true;
+                // 为什么这里执行了这个方法，按钮就消失了呢？
+                this.menusTable = this.menusTable.filter(function (element) {
+                  return element.parentId !== item.id
+                })
+              }
+            }
+          )
+        } else {
+          // 把子菜单全部从表格中剔除
+          this.menusTable = this.menusTable.filter(function (element) {
+            return element.parentId !== item.id
+          })
         }
       }
     }
