@@ -169,7 +169,7 @@
               } else {
                 // 如果没有子菜单，就隐藏图标
                 item.showChildBtn = true;
-                // 为什么这里执行了这个方法，按钮就消失了呢？
+                // TODO 为什么这里执行了这个方法，按钮就消失了呢？
                 this.menusTable = this.menusTable.filter(function (element) {
                   return element.parentId !== item.id
                 })
