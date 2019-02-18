@@ -1,7 +1,8 @@
 <script>
   import axios from 'axios';
   import tips from "./TipsUtils";
-  import config from '../Config'
+  import global from '../Global';
+  // import qs from 'qs';
 
   function get(url, params) {
     return $axios(url, params, "GET")
@@ -13,11 +14,13 @@
 
   function $axios(url, params, method) {
     return new Promise((resolve, reject) => {
+      let data = method.toLocaleLowerCase() === 'get' ? 'params' : 'data';
       const instance = axios.create({
-          baseURL: config.info.host,
+          baseURL: global.info.host,
           url: url,
           method: method,
-          params: params,
+          [data]: params,
+          // params: params,
           // 请求头信息
           headers: {
             'Content-Type': 'application/json;charset=UTF-8'
@@ -128,7 +131,7 @@
       instance(url, params, method).then((res) => {
         if (!res.success) {
           tips.error(`ERROR: ${res.message}`);
-          reject(error);
+          reject(res);
         } else {
           resolve(res);
         }

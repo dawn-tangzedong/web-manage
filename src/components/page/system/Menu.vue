@@ -1,6 +1,9 @@
 <!-- 菜单树 -->
 <template>
   <div class="menus-tree">
+    <div slot="header" class="dia log-header">
+      <el-button type="primary" @click="addShowDialogForm()">添加</el-button>
+    </div>
     <!-- 菜单树形表格 -->
     <el-table ref="menusTable" :row-style="showRow" :data="menusTable" v-bind="$attrs">
       <el-table-column
@@ -31,11 +34,11 @@
         <template slot-scope="scope">
           <!-- 三级菜单不能增加子菜单 -->
           <el-button v-if="scope.row.level!=='3' && !scope.row.path" type="text" size="small"
-                     @click="showDialogForm(scope.row,'新增菜单')">增加
+                     @click="addShowDialogForm(scope.row,'新增菜单')">增加
           </el-button>
           <!-- 判断下面是否有子菜单，有子菜单不能是有删除按钮 -->
           <el-button v-if="!scope.row.children" type="text" size="small">删除</el-button>
-          <el-button type="text" size="small">编辑</el-button>
+          <el-button type="text" @click="updateShowDialogForm(scope.row,'修改菜单')" size="small">编辑</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -68,7 +71,7 @@
       </el-form>
       <div slot="footer" class="dia log-footer">
         <el-button @click="dialogFormVisible = false">取 消</el-button>
-        <el-button type="primary" @click="addMenu">确 定</el-button>
+        <el-button type="primary" @click="submit(dialogTitle)">确 定</el-button>
       </div>
     </el-dialog>
   </div>
@@ -107,35 +110,56 @@
     },
     // 初始化函数，赋值，menusTree =>menusTable
     created() {
-      // 洗牌树形表格
-      http.get('sys/menu/list').then(response => {
-          this.menusTable = response.data;
-        }
-        // , reject => {
-        //   console.log(reject)
-        // }
-      )
+      this.$options.methods.shuffle(this);
     },
     methods: {
       // 展示添加、修改菜单的弹窗界面
-      showDialogForm: function (parent, dialogTitle) {
+      addShowDialogForm: function (parent, dialogTitle) {
+        this.menuDTO = {}; //初始化数据
         if (parent) {
           this.menuParentDTO.title = parent.title; // 判断是否显示上级菜单的标题
+          this.menuDTO.level = parent.level + 1; // 等级赋值
+          this.menuDTO.parentId = parent.id; // 菜单绑定
+        } else {
+          this.menuDTO.level = 1; // 等级赋值
+          this.menuDTO.parentId = undefined; // 菜单绑定
         }
-        this.menuDTO.level = parent.level + 1; // 等级赋值
-        this.menuDTO.parentId = parent.id; // 菜单绑定
+        this.dialogTitle = dialogTitle; // 弹窗标题
+        this.dialogFormVisible = true; // 打开弹窗
+      },
+      updateShowDialogForm: function (item, dialogTitle) {
+        this.menuDTO = item;
         this.dialogTitle = dialogTitle; // 弹窗标题
         this.dialogFormVisible = true; // 打开弹窗
       },
       // 添加菜单操作
-      addMenu: function () {
-        this.dialogFormVisible = false;
-        http.post('sys/menu/save', this.menuDTO).then(response => {
+      addMenu: function (self) {
+        self.dialogFormVisible = false;
+        http.post('sys/menu/save', self.menuDTO).then(response => {
           tips.success("请求成功");
-          http.get('sys/menu/list').then(response => {
-            this.menusTable = response.data;
-          })
+          self.$options.methods.shuffle(self);
         })
+      },
+      // 修改菜单操作
+      updateMenu: function (self) {
+        http.post('sys/menu/updateById', self.menuDTO).then(response => {
+          tips.success("请求成功");
+          self.$options.methods.shuffle(self);
+        })
+        self.dialogFormVisible = false;
+      },
+      // 重新渲染树形表格数据
+      shuffle: function (self) {
+        http.get('sys/menu/list').then(response => {
+          self.menusTable = response.data;
+        })
+      },
+      submit: function (dialogTitle) {
+        if (dialogTitle === '修改菜单') {
+          this.$options.methods.updateMenu(this);
+        } else {
+          this.$options.methods.addMenu(this)
+        }
       },
       showRow: function (row) {
         const show = row.row.parent ? row.row.parent._expanded && row.row.parent._show : true;
@@ -153,7 +177,6 @@
         if (item.open) {
           let menusTable = this.menusTable;
           http.get('sys/menu/list', {'parentId': item.id}).then(response => {
-              console.log(response.data.length);
               if (response.data.length > 0) {
                 for (let j = 0; j < menusTable.length; j++) {
                   // 找到父节点的id，然后依次把子节点放到数组里面父节点后面
